@@ -74,3 +74,8 @@ Este archivo define las reglas de desarrollo, especificaciones de la herramienta
 * **Causa:** Omisión de botones y lógica para llamar a `navigator.clipboard`.
 * **Solución:** Resuelto delegando el manejo nativo del portapapeles (con todos sus atajos) directamente a Monaco Editor en la refactorización v2.
 
+### [BUG-002] Toggle de minimapa no actualiza Monaco DiffEditor
+* **Fecha:** 2026-05-24
+* **Fallo:** El botón de minimapa cambiaba su estado visual, pero el minimapa no aparecía en la comparativa.
+* **Causa:** Se intentó actualizar la opción `minimap` solo desde el wrapper `DiffEditor`, sin forzar la actualización en los editores internos original y modificado.
+* **Solución:** Actualizar explícitamente `getOriginalEditor()` y `getModifiedEditor()` además del wrapper `DiffEditor` al alternar el minimapa.

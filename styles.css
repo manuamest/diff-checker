@@ -129,10 +129,10 @@ body {
     top: 18px;
     left: 50%;
     transform: translateX(-50%);
-    width: min(1180px, calc(100vw - 32px));
+    width: min(1320px, calc(100vw - 32px));
     z-index: 1000;
     display: grid;
-    grid-template-columns: minmax(190px, 0.75fr) auto minmax(330px, 1fr);
+    grid-template-columns: minmax(220px, 1fr) auto minmax(220px, 1fr);
     align-items: center;
     gap: 10px;
     
@@ -202,7 +202,10 @@ body {
 }
 
 .edit-actions {
+    display: grid;
+    grid-template-columns: minmax(132px, 1fr) auto minmax(132px, 1fr);
     justify-self: center;
+    min-width: min(460px, 100%);
 }
 
 .view-controls {
@@ -267,6 +270,12 @@ body {
 
 .btn-quiet {
     color: var(--btn-quiet-text);
+}
+
+.btn[aria-pressed="true"] {
+    background: var(--btn-hover-bg);
+    border-color: var(--btn-primary-border);
+    color: var(--btn-primary-text);
 }
 
 .btn-danger {

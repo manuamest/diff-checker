@@ -16,6 +16,7 @@ window.MonacoEnvironment = {
 let diffEditor;
 let isDarkTheme = true;
 let isSplitView = true;
+let isMinimapVisible = false;
 
 const THEME_DARK = 'diffy-dark';
 const THEME_LIGHT = 'diffy-light';
@@ -99,6 +100,14 @@ function defineDiffyThemes() {
     });
 }
 
+function updateMinimapVisibility(enabled) {
+    const minimap = { enabled };
+
+    diffEditor.updateOptions({ minimap });
+    diffEditor.getOriginalEditor().updateOptions({ minimap });
+    diffEditor.getModifiedEditor().updateOptions({ minimap });
+}
+
 require(['vs/editor/editor.main'], function() {
     defineDiffyThemes();
 
@@ -167,11 +176,20 @@ require(['vs/editor/editor.main'], function() {
     // 4. Connect UI Controls
     const toggleViewBtn = document.getElementById('toggle-view-btn');
     const toggleViewSpan = toggleViewBtn.querySelector('span');
+    const toggleMinimapBtn = document.getElementById('toggle-minimap-btn');
+    const toggleMinimapSpan = toggleMinimapBtn.querySelector('span');
     
     toggleViewBtn.addEventListener('click', () => {
         isSplitView = !isSplitView;
         diffEditor.updateOptions({ renderSideBySide: isSplitView });
         toggleViewSpan.textContent = isSplitView ? 'Inline View' : 'Split View';
+    });
+
+    toggleMinimapBtn.addEventListener('click', () => {
+        isMinimapVisible = !isMinimapVisible;
+        updateMinimapVisibility(isMinimapVisible);
+        toggleMinimapBtn.setAttribute('aria-pressed', String(isMinimapVisible));
+        toggleMinimapSpan.textContent = isMinimapVisible ? 'Minimap On' : 'Minimap Off';
     });
 
     const toggleThemeBtn = document.getElementById('toggle-theme-btn');
@@ -198,22 +216,34 @@ require(['vs/editor/editor.main'], function() {
     const clearRightBtn = document.getElementById('clear-right-btn');
     const clearAllBtn = document.getElementById('clear-all-btn');
 
+    // Helper function to apply edits while preserving the undo stack (Ctrl+Z)
+    function applyUndoableEdit(model, newText) {
+        model.pushEditOperations(
+            [],
+            [{
+                range: model.getFullModelRange(),
+                text: newText
+            }],
+            () => null
+        );
+    }
+
     switchBtn.addEventListener('click', () => {
         const temp = originalModel.getValue();
-        originalModel.setValue(modifiedModel.getValue());
-        modifiedModel.setValue(temp);
+        applyUndoableEdit(originalModel, modifiedModel.getValue());
+        applyUndoableEdit(modifiedModel, temp);
     });
 
     clearLeftBtn.addEventListener('click', () => {
-        originalModel.setValue('');
+        applyUndoableEdit(originalModel, '');
     });
 
     clearRightBtn.addEventListener('click', () => {
-        modifiedModel.setValue('');
+        applyUndoableEdit(modifiedModel, '');
     });
 
     clearAllBtn.addEventListener('click', () => {
-        originalModel.setValue('');
-        modifiedModel.setValue('');
+        applyUndoableEdit(originalModel, '');
+        applyUndoableEdit(modifiedModel, '');
     });
 });
