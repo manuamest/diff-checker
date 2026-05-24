@@ -1,22 +1,20 @@
 <div align="center">
 
 <a href="https://github.com/manuamest/diff-checker">
-<img src="./favicon.png" alt="Diffy Logo" width="120" />
+<img src="./favicon.svg" alt="Diffy Logo" width="100" type="image/svg+xml"/>
 </a>
 
-# Diffy
+# Code Comparison | Diffy
 
 **Premium Code Comparison. Instant & In your browser.**
 
-[Ver en GitHub Pages](https://manuamest.github.io/diff-checker/)
+[Try it now!](https://manuamest.github.io/diff-checker/)
 
 </div>
 
 Diffy is a lightweight, incredibly fast, and beautiful code comparison tool built to run entirely on the client side. No servers, no installation, just drop your code and see the diff instantly.
 
 ![Diffy Demo](./assets/demo.gif)
-
-*(Note: Record a short screen capture of Diffy in action, convert it to a `.gif`, and save it as `demo.gif` in the `assets/` folder to display it here. Alternatively, you can edit this file directly on the GitHub website and drag-and-drop an `.mp4` video!)*
 
 ## How it works
 
