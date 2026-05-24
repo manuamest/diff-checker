@@ -54,6 +54,7 @@
     --btn-danger-hover-shadow: rgba(224, 108, 117, 0.2);
     
     /* Editor specific */
+    --editor-content-offset: 120px;
     --margin-border: rgba(255, 255, 255, 0.035);
     --sash-color: rgba(97, 175, 239, 0.34);
 }
@@ -313,6 +314,23 @@ body {
     width: 1px;
     background: linear-gradient(180deg, transparent, var(--sash-color), transparent);
     transform: translateX(-50%);
+}
+
+.monaco-diff-editor .modified-in-monaco-diff-editor .minimap {
+    top: var(--editor-content-offset) !important;
+    height: calc(100% - var(--editor-content-offset)) !important;
+    background: transparent !important;
+}
+
+.monaco-diff-editor .modified-in-monaco-diff-editor .minimap canvas {
+    opacity: 0.5;
+}
+
+.monaco-diff-editor .modified-in-monaco-diff-editor .minimap-decorations-layer,
+.monaco-diff-editor .modified-in-monaco-diff-editor .minimap-slider,
+.monaco-diff-editor .modified-in-monaco-diff-editor .minimap-shadow-hidden,
+.monaco-diff-editor .modified-in-monaco-diff-editor .minimap-shadow-visible {
+    background: transparent !important;
 }
 
 @media (max-width: 1040px) {

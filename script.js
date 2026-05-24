@@ -14,6 +14,9 @@ window.MonacoEnvironment = {
 };
 
 let diffEditor;
+let modifiedDiffDecorations;
+let pasteScrollLock;
+let pasteScrollSnapshot;
 let isDarkTheme = true;
 let isSplitView = true;
 let isMinimapVisible = false;
@@ -26,6 +29,8 @@ function syncEditorPadding() {
 
     const toolbar = document.getElementById('toolbar');
     const toolbarOffset = toolbar ? toolbar.offsetTop + toolbar.offsetHeight + 40 : 120;
+
+    document.documentElement.style.setProperty('--editor-content-offset', `${toolbarOffset}px`);
 
     diffEditor.updateOptions({
         padding: { top: toolbarOffset }
@@ -57,6 +62,15 @@ function defineDiffyThemes() {
             'scrollbarSlider.background': '#8B96A833',
             'scrollbarSlider.hoverBackground': '#8B96A852',
             'scrollbarSlider.activeBackground': '#8B96A875',
+            'minimap.background': '#00000000',
+            'minimapSlider.background': '#8B96A81F',
+            'minimapSlider.hoverBackground': '#8B96A83D',
+            'minimapSlider.activeBackground': '#8B96A85C',
+            'editorOverviewRuler.addedForeground': '#2FD27AFF',
+            'editorOverviewRuler.deletedForeground': '#FF6B6BFF',
+            'editorOverviewRuler.modifiedForeground': '#7FB7FFFF',
+            'diffEditorOverview.insertedForeground': '#2FD27AFF',
+            'diffEditorOverview.removedForeground': '#FF6B6BFF',
             'diffEditor.insertedTextBackground': '#2FD27A2F',
             'diffEditor.removedTextBackground': '#FF6B6B33',
             'diffEditor.insertedLineBackground': '#1E9F5A20',
@@ -90,6 +104,15 @@ function defineDiffyThemes() {
             'scrollbarSlider.background': '#52607025',
             'scrollbarSlider.hoverBackground': '#5260703D',
             'scrollbarSlider.activeBackground': '#52607059',
+            'minimap.background': '#00000000',
+            'minimapSlider.background': '#5260701A',
+            'minimapSlider.hoverBackground': '#52607033',
+            'minimapSlider.activeBackground': '#5260704D',
+            'editorOverviewRuler.addedForeground': '#22A35AFF',
+            'editorOverviewRuler.deletedForeground': '#D93232FF',
+            'editorOverviewRuler.modifiedForeground': '#0070C9FF',
+            'diffEditorOverview.insertedForeground': '#22A35AFF',
+            'diffEditorOverview.removedForeground': '#D93232FF',
             'diffEditor.insertedTextBackground': '#22A35A26',
             'diffEditor.removedTextBackground': '#D932322B',
             'diffEditor.insertedLineBackground': '#22A35A16',
@@ -101,28 +124,119 @@ function defineDiffyThemes() {
 }
 
 function updateMinimapVisibility(enabled) {
-    const minimap = { enabled };
+    const disabledMinimap = { enabled: false };
+    const modifiedMinimap = {
+        enabled,
+        side: 'right',
+        renderCharacters: false,
+        size: 'proportional',
+        showSlider: 'mouseover',
+        maxColumn: 120,
+        scale: 2
+    };
 
-    diffEditor.updateOptions({ minimap });
-    diffEditor.getOriginalEditor().updateOptions({ minimap });
-    diffEditor.getModifiedEditor().updateOptions({ minimap });
+    diffEditor.updateOptions({ minimap: disabledMinimap });
+    diffEditor.getOriginalEditor().updateOptions({
+        minimap: disabledMinimap,
+        renderOverviewRuler: false
+    });
+    diffEditor.getModifiedEditor().updateOptions({
+        minimap: enabled ? modifiedMinimap : disabledMinimap,
+        renderOverviewRuler: enabled,
+        overviewRulerBorder: false
+    });
+
+    updateDiffMapDecorations();
+}
+
+function updateDiffMapDecorations() {
+    if (!modifiedDiffDecorations || !diffEditor) return;
+
+    const changes = diffEditor.getLineChanges() || [];
+    const decorations = isMinimapVisible ? changes.map((change) => {
+        const isDeletion = change.modifiedEndLineNumber === 0;
+        const startLine = Math.max(1, change.modifiedStartLineNumber || change.modifiedEndLineNumber || 1);
+        const endLine = Math.max(startLine, change.modifiedEndLineNumber || startLine);
+        const color = isDeletion ? '#FF6B6BFF' : '#2FD27AFF';
+
+        return {
+            range: new monaco.Range(startLine, 1, endLine, 1),
+            options: {
+                isWholeLine: true,
+                minimap: {
+                    color,
+                    position: monaco.editor.MinimapPosition.Inline
+                },
+                overviewRuler: {
+                    color,
+                    position: monaco.editor.OverviewRulerLane.Right
+                }
+            }
+        };
+    }) : [];
+
+    modifiedDiffDecorations.set(decorations);
+}
+
+function getEditorScrollSnapshot() {
+    return [diffEditor.getOriginalEditor(), diffEditor.getModifiedEditor()].map((editor) => ({
+        editor,
+        scrollTop: editor.getScrollTop(),
+        scrollLeft: editor.getScrollLeft()
+    }));
+}
+
+function restoreEditorScrollSnapshot(snapshot) {
+    snapshot.forEach(({ editor, scrollTop, scrollLeft }) => {
+        editor.setScrollPosition({ scrollTop, scrollLeft });
+    });
+}
+
+function preserveScrollAroundPaste() {
+    window.clearTimeout(pasteScrollLock);
+
+    pasteScrollSnapshot = getEditorScrollSnapshot();
+    const restore = () => restoreEditorScrollSnapshot(pasteScrollSnapshot);
+    const restoreWhileLocked = () => {
+        if (pasteScrollLock && pasteScrollSnapshot) restore();
+    };
+
+    pasteScrollLock = window.setTimeout(() => {
+        restore();
+        pasteScrollLock = null;
+        pasteScrollSnapshot = null;
+    }, 900);
+
+    requestAnimationFrame(() => {
+        restore();
+        requestAnimationFrame(restore);
+    });
+
+    [0, 25, 50, 100, 180, 300, 500, 700].forEach((delay) => {
+        window.setTimeout(restoreWhileLocked, delay);
+    });
+}
+
+function setupPasteScrollPreservation() {
+    [diffEditor.getOriginalEditor(), diffEditor.getModifiedEditor()].forEach((editor) => {
+        const node = editor.getDomNode();
+
+        if (node) {
+            node.addEventListener('paste', preserveScrollAroundPaste, true);
+        }
+
+        editor.onDidScrollChange(() => {
+            if (pasteScrollLock && pasteScrollSnapshot) {
+                restoreEditorScrollSnapshot(pasteScrollSnapshot);
+            }
+        });
+    });
 }
 
 require(['vs/editor/editor.main'], function() {
     defineDiffyThemes();
 
-    // 1. Initial default content to show the user how it works
-    const defaultOriginal = `function calculateTotal(items) {
-    let total = 0;
-    for(let i = 0; i < items.length; i++) {
-        total += items[i].price;
-    }
-    return total;
-}`;
-
-    const defaultModified = `function calculateTotal(items) {
-    return items.reduce((total, item) => total + item.price, 0);
-}`;
+    // 1. Initial default content is loaded from window.DEMO_ORIGINAL / window.DEMO_MODIFIED (defined in demo.js)
 
     // 2. Initialize the Diff Editor
     diffEditor = monaco.editor.createDiffEditor(document.getElementById('editor-container'), {
@@ -164,6 +278,8 @@ require(['vs/editor/editor.main'], function() {
     // 3. Create the models for left (original) and right (modified) sides
     // Only load example code if DEV_MODE is true in the local env.js file
     const isDevMode = typeof window !== 'undefined' && window.ENV && window.ENV.DEV_MODE === true;
+    const defaultOriginal = (typeof window !== 'undefined' && window.DEMO_ORIGINAL) || '';
+    const defaultModified = (typeof window !== 'undefined' && window.DEMO_MODIFIED) || '';
     
     const originalModel = monaco.editor.createModel(isDevMode ? defaultOriginal : '', 'javascript');
     const modifiedModel = monaco.editor.createModel(isDevMode ? defaultModified : '', 'javascript');
@@ -172,6 +288,10 @@ require(['vs/editor/editor.main'], function() {
         original: originalModel,
         modified: modifiedModel
     });
+
+    modifiedDiffDecorations = diffEditor.getModifiedEditor().createDecorationsCollection();
+    diffEditor.onDidUpdateDiff(updateDiffMapDecorations);
+    setupPasteScrollPreservation();
 
     // 4. Connect UI Controls
     const toggleViewBtn = document.getElementById('toggle-view-btn');
